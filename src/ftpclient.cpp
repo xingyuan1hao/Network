@@ -1,0 +1,187 @@
+#include "ftpclient.h"
+#include <QtNetwork>
+#include <QtGui>
+
+FtpClient::FtpClient(QObject *parent)
+	: QObject(parent),ftp(NULL),file(NULL)
+{
+	progressDialog = new QProgressDialog((QWidget *)parent);
+}
+
+FtpClient::~FtpClient()
+{
+
+}
+
+void FtpClient::ftpConnect()
+{
+	if (ftp ==NULL) {
+		QApplication::setOverrideCursor(Qt::WaitCursor);
+		ftp = new QFtp(this);
+		connect(progressDialog, SIGNAL(canceled()), this, SLOT(cancelDownload()));
+		connect(ftp, SIGNAL(commandFinished(int, bool)),
+			this, SLOT(ftpCommandFinished(int, bool)));
+		connect(ftp, SIGNAL(listInfo(const QUrlInfo &)),
+			this, SLOT(addToList(const QUrlInfo &)));
+		connect(ftp, SIGNAL(dataTransferProgress(qint64, qint64)),
+			this, SLOT(updateDataTransferProgress(qint64, qint64)));
+
+		ftp->connectToHost(serverName,serverPort.toUShort());
+		ftp->login(userName,passWord);
+		ftp->list();
+		ftpStatus = tr("Connecting to FTP server %1...")
+			.arg(serverName);
+		emit cmdConncted(true);
+	}
+	else {
+		ftp->abort();
+		ftp->deleteLater();
+		ftp = NULL;
+		emit cmdConncted(false);
+	}
+
+}
+
+void FtpClient::cancelDownload()
+{
+		ftp->abort();
+}
+
+void FtpClient::ftpCommandFinished(int /*commandId*/, bool error)
+{
+
+	if (ftp->currentCommand() == QFtp::Login) {
+		if (error) {
+			QApplication::restoreOverrideCursor();
+			ftpStatus =tr("Unable to connect to the FTP server "
+				"at %1. Please check that the host"
+				"name、port、username and password are correct.")
+				.arg(serverName);
+			emit cmdConncted(false);
+			return;
+		}
+		ftpStatus =tr("Logged onto %1. ").arg(serverName);
+		emit cmdConncted(true);
+		return;
+	}
+
+	if (ftp->currentCommand() == QFtp::Get) {
+		QApplication::restoreOverrideCursor();
+		if (error) {
+			ftpStatus =tr("Canceled download of %1.")
+				.arg(file->fileName());
+			file->close();
+			file->remove();
+			emit cmdGot(true);
+		} else {
+			ftpStatus = tr("Downloaded %1 to the directory.")
+				.arg(file->fileName());
+			file->close();
+			emit cmdGot(false);
+		}
+		delete file;
+	} else if (ftp->currentCommand() == QFtp::List) {
+		QApplication::restoreOverrideCursor();
+		if (isDirectory.isEmpty()) {
+			emit cmdList(true);
+		}
+	}
+}
+
+void FtpClient::addToList(const QUrlInfo &urlInfo)
+{
+	isDirectory[urlInfo.name()] = urlInfo.isDir();
+	emit cmdChangeList(urlInfo);
+}
+
+
+void FtpClient::changeDir(const QString& dir)
+{
+	if(dir.isEmpty())//返回父目录
+	{
+		QApplication::setOverrideCursor(Qt::WaitCursor);
+		isDirectory.clear();
+		currentPath = currentPath.left(currentPath.lastIndexOf('/'));
+		if (currentPath.isEmpty()) {
+			ftp->cd("/");
+			emit cmdIsTopDir(true);
+		} else {
+			ftp->cd(currentPath);
+		}
+		ftp->list();
+	}
+	else//进入子目录
+	{
+		if (isDirectory.value(dir)) {
+			isDirectory.clear();
+			currentPath += "/" + dir;
+			ftp->cd(dir);
+			ftp->list();
+			emit cmdIsTopDir(false);
+			QApplication::setOverrideCursor(Qt::WaitCursor);
+		}
+	}
+}
+
+void FtpClient::getFile(const QString& fileName)
+{
+	if (QFile::exists(fileName)) {
+		QMessageBox::information(0, tr("FTP"),
+			tr("There already exists a file called %1 in "
+                                    "the current directory.")
+			.arg(fileName));
+		return;
+	}
+	QTextCodec *codec=QTextCodec::codecForName("utf8");
+	QByteArray ba=fileName.toLatin1();
+	temp=codec->toUnicode(ba);
+	QString f = QFileDialog::getSaveFileName(0,tr("SaveAs"),temp);
+	file=new QFile(f);
+	if (!file->open(QIODevice::WriteOnly)) {
+		QMessageBox::information(0, tr("FTP"),
+			tr("Unable to save the file %1: %2.")
+			.arg(temp).arg(file->errorString()));
+		delete file;
+		return;
+	}
+
+	ftp->get(fileName, file);
+
+	progressDialog->setLabelText(tr("Downloading %1...").arg(temp));
+	progressDialog->show();
+	emit cmdDownloading();
+
+}
+
+void FtpClient::putFile()
+{
+	 QString localFile = QFileDialog::getOpenFileName(0,
+            tr("upload file dialog") );
+
+	if ( localFile.isNull() )
+        return;
+
+	QFile *file=new QFile(localFile);
+	if(!file->open(QFile::ReadOnly))
+	{
+		QMessageBox::warning(0,tr("read file"),tr("Unable read file  %1:\n%2.").arg(localFile).arg(file->errorString()));
+		delete file;
+		return;
+	}
+
+	progressDialog->setLabelText(tr("Uploading %1...").arg(localFile));
+
+	QFileInfo fi(localFile.toUtf8());
+	ftp->put(file,fi.fileName());
+	progressDialog->show();
+
+	isDirectory.clear();
+	ftp->list();
+}
+
+void FtpClient::updateDataTransferProgress(qint64 readBytes,qint64 totalBytes)
+{
+	progressDialog->setMaximum(totalBytes);
+	progressDialog->setValue(readBytes);
+
+}
