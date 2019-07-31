@@ -1,1 +1,3 @@
 　SMTP协议：全称为 Simple Mail Transfer Protocol，简单邮件传输协议。
+SMTP和POP3以及IMAP都是用来做什么的，简单的来说，smtp主要负责发，pop3和imap主要负责收。 
+一封邮件的发&收的流程是通过SMTP进行发送，使用POP3或者IMAP4进行接收的。
