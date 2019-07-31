@@ -1,0 +1,1 @@
+　SMTP协议：全称为 Simple Mail Transfer Protocol，简单邮件传输协议。
