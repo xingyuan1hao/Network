@@ -25,3 +25,12 @@ HTTP的几个重要概念
 在http1.1，request和reponse头中都有可能出现一个connection的头，此header的含义是当client和server通信时对于长链接如何进行处理。
 
 在http1.1中，client和server都是默认对方支持长链接的， 如果client使用http1.1协议，但又不希望使用长链接，则需要在header中指明connection的值为close；如果server方也不想支持长链接，则在response中也需要明确说明connection的值为close。不论request还是response的header中包含了值为close的connection，都表明当前正在使用的tcp链接在当天请求处理完毕后会被断掉。以后client再进行新的请求时就必须创建新的tcp链接了。
+
+2消息：Message
+HTTP通讯的基本单位，包括一个结构化的八元组序列并通过连接传输。
+
+3请求：Request
+一个从客户端到服务器的请求信息包括应用于资源的方法、资源的标识符和协议的版本号。
+
+4响应：Response
+一个从服务器返回的信息包括HTTP协议的版本号、请求的状态(例如“成功”或“没找到”)和文档的MIME类型。
