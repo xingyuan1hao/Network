@@ -7,6 +7,13 @@ PPP协议是一种在串行链路上传输IP数据包的一种方法，是一个
         一个用来建立、配置和测试数据链路连接的链路控制协议LCP( Link Control Protoco )。通信的双方可协商一些选项。在RFC1661中定义了11种类型的LCP分组。
         一套网络控制协议NCP( Network Control protocol ),其中的每一个协议支持不同的网络层协议,如IP、OSI的网络层、 Decnet ,以及 Appletalk 等。
 
+功能：
+(1)PPP具有动态分配IP地址的能力，允许在连接时刻协商IP地址；
+(2)PPP支持多种网络协议，比如TCP/IP、NetBEUI、NWLINK等；
+(3)PPP具有错误检测以及纠错能力，支持数据压缩；
+(4)PPP具有身份验证功能。
+(5)PPP可以用于多种类型的物理介质上，包括串口线、电话线、移动电话和光纤（例如SDH），PPP也用于Internet接入。
+
 
 
 PPP帧格式：
